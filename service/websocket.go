@@ -8,6 +8,7 @@ import (
 	"im/models"
 	"log"
 	"net/http"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -42,12 +43,25 @@ func WebsocketMessage(c *gin.Context) {
 		}
 
 		//TODO:保存消息
-		//TODO:查询特定房间内的在线用户
+		mb := &models.MessageBasic{
+			UserIdentity: uc.Identity,
+			RoomIdentity: ms.RoomIdentity,
+			Data:         ms.Message,
+			CreatedAt:    time.Now().Unix(),
+			UpdatedAt:    time.Now().Unix(),
+		}
+		err = models.InsertOneMessageBasic(mb)
+		if err != nil {
+			log.Println("[DB ERROR]", err)
+			return
+		}
+		//查询特定房间内的在线用户
 		userRooms, err := models.GetUserRoomByRoomIdenrity(ms.RoomIdentity)
 		if err != nil {
 			log.Println("[DB ERROR]")
 			return
 		}
+		//给房间内用户发送消息
 		for _, room := range userRooms {
 			if w, ok := wc[room.UserIdentity]; ok {
 				err := w.WriteMessage(websocket.TextMessage, []byte(ms.Message))
