@@ -42,3 +42,29 @@ func GetUserRoomByRoomIdenrity(roomIdentity string) ([]*UserRoom, error) {
 	}
 	return userRooms, err
 }
+
+func JudgeIsFriend(userIdentity1, userIdentity2 string) (bool, error) {
+	cursor, err := Mongo.Collection(UserRoom{}.CollectionName()).
+		Find(context.Background(), bson.D{{"user_identity", userIdentity1}, {"room_type", 1}})
+	roomidentuties := make([]string, 0)
+	if err != nil {
+		return false, err
+	}
+	for cursor.Next(context.Background()) {
+		ur := new(UserRoom)
+		err := cursor.Decode(ur)
+		if err != nil {
+			return false, err
+		}
+		roomidentuties = append(roomidentuties, ur.RoomIdentity)
+	}
+	countDocuments, err := Mongo.Collection(UserRoom{}.CollectionName()).
+		CountDocuments(context.Background(), bson.M{"user_identity": userIdentity2, "room_identity": bson.M{"$in": roomidentuties}})
+	if err != nil {
+		return false, err
+	}
+	if countDocuments > 0 {
+		return true, nil
+	}
+	return false, nil
+}

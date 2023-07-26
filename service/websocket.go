@@ -42,7 +42,7 @@ func WebsocketMessage(c *gin.Context) {
 			log.Printf("UserIdentity:%v or RoomIdentity:%v NOT EXITS", uc.Identity, ms.RoomIdentity)
 		}
 
-		//TODO:保存消息
+		//保存消息
 		mb := &models.MessageBasic{
 			UserIdentity: uc.Identity,
 			RoomIdentity: ms.RoomIdentity,
