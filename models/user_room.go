@@ -68,3 +68,8 @@ func JudgeIsFriend(userIdentity1, userIdentity2 string) (bool, error) {
 	}
 	return false, nil
 }
+
+func InsertOneUserRoom(mb *UserRoom) error {
+	_, err := Mongo.Collection(UserRoom{}.CollectionName()).InsertOne(context.Background(), mb)
+	return err
+}

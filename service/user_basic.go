@@ -115,7 +115,7 @@ func SendCode(c *gin.Context) {
 	helper.SendCodeEmail(email, getRand)
 	c.JSON(http.StatusOK, gin.H{
 		"code": 200,
-		"msg":  "seccess",
+		"msg":  "Success",
 	})
 
 	err = models.Redis.Set(context.Background(), define.RegisterPer+email, getRand, time.Second*time.Duration(define.ExpireTime)).Err()
@@ -254,5 +254,82 @@ func UserQuery(c *gin.Context) {
 		"code": 200,
 		"msg":  "Success",
 		"data": byAccount,
+	})
+}
+
+func UserAdd(c *gin.Context) {
+	account := c.PostForm("account")
+	basicByAccount, err := models.GetUserBasicByAccount(account)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": -1,
+			"msg":  "参数不能为空",
+		})
+		return
+	}
+	userClaim := c.MustGet("user_claims").(*helper.UserClaim)
+	isFriend, err := models.JudgeIsFriend(basicByAccount.Identity, userClaim.Identity)
+	if err != nil {
+		log.Println("[DB ERROR]", err)
+		c.JSON(http.StatusOK, gin.H{
+			"code": -1,
+			"msg":  "数据库错误",
+		})
+		return
+	}
+	if isFriend {
+		c.JSON(http.StatusOK, gin.H{
+			"code": -1,
+			"msg":  "已经是好友了，不能重复添加",
+		})
+		return
+	}
+	//保存房间的记录
+	roomBasic := &models.RoomBasic{
+		Identity:     helper.GetUUID(),
+		UserIdentity: userClaim.Identity,
+		CreatedAt:    time.Now().Unix(),
+		UpdatedAt:    time.Now().Unix(),
+	}
+	if err = models.InsertOneRoomBasic(roomBasic); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": -1,
+			"msg":  "数据库插入错误",
+		})
+		return
+	}
+	m := &models.UserRoom{
+		UserIdentity: userClaim.Identity,
+		RoomIdentity: roomBasic.Identity,
+		RoomType:     1,
+		CreatedAt:    time.Now().Unix(),
+		UpdatedAt:    time.Now().Unix(),
+	}
+	err = models.InsertOneUserRoom(m)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": -1,
+			"msg":  "Insert UserRoom Error" + err.Error(),
+		})
+		return
+	}
+	m = &models.UserRoom{
+		UserIdentity: basicByAccount.Identity,
+		RoomIdentity: roomBasic.Identity,
+		RoomType:     1,
+		CreatedAt:    time.Now().Unix(),
+		UpdatedAt:    time.Now().Unix(),
+	}
+	err = models.InsertOneUserRoom(m)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": -1,
+			"msg":  "Insert UserRoom Error" + err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"code": "200",
+		"msg":  "Success",
 	})
 }
